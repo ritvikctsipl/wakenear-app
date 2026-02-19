@@ -1,8 +1,8 @@
 package com.comprint.wakenear.alarm
 
 import android.content.Context
-import android.content.Intent
 import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.os.Build
@@ -14,15 +14,19 @@ class AlarmController(private val context: Context) {
 
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
+    private var previousVolume: Int = -1
+    private var audioManager: AudioManager? = null
 
-    fun triggerAlarm() {
-        // Start alarm activity
-        val intent = Intent(context, AlarmActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        }
-        context.startActivity(intent)
+    fun startAlarm() {
+        if (mediaPlayer != null) return // Already playing, don't double-trigger
 
-        // Start sound
+        // Boost alarm volume to max
+        audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        previousVolume = audioManager!!.getStreamVolume(AudioManager.STREAM_ALARM)
+        val maxVolume = audioManager!!.getStreamMaxVolume(AudioManager.STREAM_ALARM)
+        audioManager!!.setStreamVolume(AudioManager.STREAM_ALARM, maxVolume, 0)
+
+        // Play alarm sound
         try {
             val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
@@ -42,7 +46,7 @@ class AlarmController(private val context: Context) {
             e.printStackTrace()
         }
 
-        // Start vibration
+        // Vibrate
         vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vm = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
             vm.defaultVibrator
@@ -50,7 +54,7 @@ class AlarmController(private val context: Context) {
             @Suppress("DEPRECATION")
             context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         }
-        val pattern = longArrayOf(0, 500, 200, 500, 200, 500, 500)
+        val pattern = longArrayOf(0, 800, 300, 800, 300, 800, 500)
         vibrator?.vibrate(VibrationEffect.createWaveform(pattern, 0))
     }
 
@@ -62,5 +66,10 @@ class AlarmController(private val context: Context) {
         mediaPlayer = null
         vibrator?.cancel()
         vibrator = null
+        // Restore volume
+        if (previousVolume >= 0) {
+            audioManager?.setStreamVolume(AudioManager.STREAM_ALARM, previousVolume, 0)
+        }
+        audioManager = null
     }
 }

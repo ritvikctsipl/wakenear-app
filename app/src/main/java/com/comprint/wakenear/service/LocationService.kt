@@ -18,7 +18,7 @@ import androidx.core.content.ContextCompat
 import com.comprint.wakenear.MainActivity
 import com.comprint.wakenear.Utils
 import com.comprint.wakenear.WakeNearApp
-import com.comprint.wakenear.alarm.AlarmController
+import com.comprint.wakenear.alarm.AlarmActivity
 
 class LocationService : Service() {
 
@@ -62,8 +62,11 @@ class LocationService : Service() {
             if (distance <= radius && !alarmTriggered) {
                 alarmTriggered = true
                 Log.d(TAG, "DESTINATION REACHED! Triggering alarm.")
-                val alarmController = AlarmController(this@LocationService)
-                alarmController.triggerAlarm()
+                val alarmIntent = Intent(this@LocationService, AlarmActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                }
+                startActivity(alarmIntent)
+                stopTracking()
                 stopSelf()
             }
         }
